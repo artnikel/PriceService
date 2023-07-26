@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -28,6 +29,7 @@ func connectRedis() (*redis.Client, error) {
 }
 
 func main() {
+	ctx := context.Background()
 	redisClient, err := connectRedis()
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
@@ -38,6 +40,9 @@ func main() {
 			log.Fatalf("Failed to disconnect from Redis: %v", errClose)
 		}
 	}()
-	//repoRedis := repository.NewRedisRepository(redisClient)
-	repository.GeneratePrice(redisClient,5)
+	repoRedis := repository.NewRedisRepository(redisClient)
+	go repoRedis.GeneratePrices(ctx, redisClient)
+	ma, _ := repoRedis.ReadPrices(ctx, redisClient)
+	fmt.Println(ma)
+	select {}
 }

@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/artnikel/TradingSystem/proto";
+
+message Actions {
+    string Company = 1;
+    double Price = 2;
+}
+
+service PriceService {
+    rpc ReadPrices(stream ReadPricesRequest) returns (stream ReadPricesResponse) {}
+}
+
+message ReadPricesRequest {
+    string company = 1;
+}
+
+message ReadPricesResponse {
+    repeated Actions actions = 1;
+}
