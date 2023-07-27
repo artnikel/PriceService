@@ -14,9 +14,9 @@ service PriceService {
 }
 
 message ReadPricesRequest {
-    string company = 1;
+    string Company = 1;
 }
 
 message ReadPricesResponse {
-    repeated Actions actions = 1;
+    repeated Actions Actions = 1;
 }
