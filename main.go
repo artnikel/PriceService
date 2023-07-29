@@ -1,3 +1,4 @@
+// Package main of a project
 package main
 
 import (
@@ -32,6 +33,7 @@ func connectRedis() (*redis.Client, error) {
 	return client, nil
 }
 
+// nolint gocritic
 func main() {
 	redisClient, err := connectRedis()
 	if err != nil {
@@ -46,23 +48,14 @@ func main() {
 	repoRedis := repository.NewRedisRepository(redisClient)
 	servRedis := service.NewPriceService(repoRedis)
 	handlRedis := handler.NewPriceHandler(servRedis)
-	// for {
-	// 	actions, err := servRedis.ReadPrices(context.Background(), "Apple")
-	// 	if err != nil {
-	// 		log.Fatalf("%v", err)
-	// 	}
-	// 	fmt.Println(actions)
-	// 	time.Sleep(time.Second / 2)
-	// }
 	lis, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
 		log.Fatalf("Cannot create listener: %s", err)
 	}
 	grpcServer := grpc.NewServer()
-	proto.RegisterPriceServiceServer(grpcServer,handlRedis)
+	proto.RegisterPriceServiceServer(grpcServer, handlRedis)
 	err = grpcServer.Serve(lis)
 	if err != nil {
 		log.Fatalf("Failed to serve listener: %s", err)
 	}
-
 }

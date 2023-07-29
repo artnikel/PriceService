@@ -1,3 +1,4 @@
+// Package repository is a lower level of project
 package repository
 
 import (
@@ -9,16 +10,20 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// RedisRepository contains objects of type *redis.Client
 type RedisRepository struct {
 	client *redis.Client
 }
 
+// NewRedisRepository accepts an object of *redis.Client and returns an object of type *Redis
 func NewRedisRepository(client *redis.Client) *RedisRepository {
 	return &RedisRepository{
 		client: client,
 	}
 }
 
+// nolint gonmd
+// ReadPrices is a method that read price by field company from redis stream adn returns price of this company
 func (r *RedisRepository) ReadPrices(ctx context.Context, company string) (float64, error) {
 	var price float64
 
