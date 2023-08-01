@@ -3,7 +3,7 @@ package handler
 
 import (
 	"context"
-	"io"
+	"time"
 
 	"github.com/artnikel/TradingSystem/proto"
 	"github.com/sirupsen/logrus"
@@ -28,17 +28,8 @@ func NewPriceHandler(priceService PriceInterface) *PriceHandler {
 }
 
 // ReadPrices is a method of PriceHandler that calls method of Service
-func (s *PriceHandler) ReadPrices(stream proto.PriceService_ReadPricesServer) error {
+func (s *PriceHandler) ReadPrices(req *proto.ReadPricesRequest, stream proto.PriceService_ReadPricesServer) error {
 	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			logrus.Errorf("PriceHandler-ReadPrices: error receiving request: %v", err)
-			return err
-		}
-
 		price, err := s.priceService.ReadPrices(stream.Context(), req.Company)
 		if err != nil {
 			logrus.Errorf("PriceHandler-ReadPrices: error getting price: %v", err)
@@ -50,10 +41,11 @@ func (s *PriceHandler) ReadPrices(stream proto.PriceService_ReadPricesServer) er
 			Price:   price,
 		}
 
-		err = stream.Send(&proto.ReadPricesResponse{Actions: []*proto.Actions{action}})
-		if err != nil {
+		if err := stream.Send(&proto.ReadPricesResponse{Actions: []*proto.Actions{action}}); err != nil {
 			logrus.Errorf("PriceHandler-ReadPrices: error sending response: %v", err)
 			return err
 		}
+		//nolint gonmd
+		time.Sleep(time.Second / 2)
 	}
 }

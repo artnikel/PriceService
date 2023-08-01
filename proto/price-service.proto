@@ -10,7 +10,7 @@ message Actions {
 }
 
 service PriceService {
-    rpc ReadPrices(stream ReadPricesRequest) returns (stream ReadPricesResponse) {}
+    rpc ReadPrices(ReadPricesRequest) returns (stream ReadPricesResponse) {}
 }
 
 message ReadPricesRequest {

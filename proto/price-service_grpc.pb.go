@@ -18,7 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PriceServiceClient interface {
-	ReadPrices(ctx context.Context, opts ...grpc.CallOption) (PriceService_ReadPricesClient, error)
+	ReadPrices(ctx context.Context, in *ReadPricesRequest, opts ...grpc.CallOption) (PriceService_ReadPricesClient, error)
 }
 
 type priceServiceClient struct {
@@ -29,27 +29,28 @@ func NewPriceServiceClient(cc grpc.ClientConnInterface) PriceServiceClient {
 	return &priceServiceClient{cc}
 }
 
-func (c *priceServiceClient) ReadPrices(ctx context.Context, opts ...grpc.CallOption) (PriceService_ReadPricesClient, error) {
+func (c *priceServiceClient) ReadPrices(ctx context.Context, in *ReadPricesRequest, opts ...grpc.CallOption) (PriceService_ReadPricesClient, error) {
 	stream, err := c.cc.NewStream(ctx, &PriceService_ServiceDesc.Streams[0], "/proto.PriceService/ReadPrices", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &priceServiceReadPricesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	return x, nil
 }
 
 type PriceService_ReadPricesClient interface {
-	Send(*ReadPricesRequest) error
 	Recv() (*ReadPricesResponse, error)
 	grpc.ClientStream
 }
 
 type priceServiceReadPricesClient struct {
 	grpc.ClientStream
-}
-
-func (x *priceServiceReadPricesClient) Send(m *ReadPricesRequest) error {
-	return x.ClientStream.SendMsg(m)
 }
 
 func (x *priceServiceReadPricesClient) Recv() (*ReadPricesResponse, error) {
@@ -64,7 +65,7 @@ func (x *priceServiceReadPricesClient) Recv() (*ReadPricesResponse, error) {
 // All implementations must embed UnimplementedPriceServiceServer
 // for forward compatibility
 type PriceServiceServer interface {
-	ReadPrices(PriceService_ReadPricesServer) error
+	ReadPrices(*ReadPricesRequest, PriceService_ReadPricesServer) error
 	mustEmbedUnimplementedPriceServiceServer()
 }
 
@@ -72,7 +73,7 @@ type PriceServiceServer interface {
 type UnimplementedPriceServiceServer struct {
 }
 
-func (UnimplementedPriceServiceServer) ReadPrices(PriceService_ReadPricesServer) error {
+func (UnimplementedPriceServiceServer) ReadPrices(*ReadPricesRequest, PriceService_ReadPricesServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReadPrices not implemented")
 }
 func (UnimplementedPriceServiceServer) mustEmbedUnimplementedPriceServiceServer() {}
@@ -89,12 +90,15 @@ func RegisterPriceServiceServer(s grpc.ServiceRegistrar, srv PriceServiceServer)
 }
 
 func _PriceService_ReadPrices_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(PriceServiceServer).ReadPrices(&priceServiceReadPricesServer{stream})
+	m := new(ReadPricesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(PriceServiceServer).ReadPrices(m, &priceServiceReadPricesServer{stream})
 }
 
 type PriceService_ReadPricesServer interface {
 	Send(*ReadPricesResponse) error
-	Recv() (*ReadPricesRequest, error)
 	grpc.ServerStream
 }
 
@@ -104,14 +108,6 @@ type priceServiceReadPricesServer struct {
 
 func (x *priceServiceReadPricesServer) Send(m *ReadPricesResponse) error {
 	return x.ServerStream.SendMsg(m)
-}
-
-func (x *priceServiceReadPricesServer) Recv() (*ReadPricesRequest, error) {
-	m := new(ReadPricesRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 // PriceService_ServiceDesc is the grpc.ServiceDesc for PriceService service.
@@ -126,7 +122,6 @@ var PriceService_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "ReadPrices",
 			Handler:       _PriceService_ReadPrices_Handler,
 			ServerStreams: true,
-			ClientStreams: true,
 		},
 	},
 	Metadata: "price-service.proto",
