@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/artnikel/TradingSystem/proto"
+	"github.com/artnikel/PriceService/proto"
 	"github.com/sirupsen/logrus"
 )
 

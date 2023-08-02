@@ -6,8 +6,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/artnikel/TradingSystem/internal/handler/mocks"
-	"github.com/artnikel/TradingSystem/proto"
+	"github.com/artnikel/PriceService/internal/handler/mocks"
+	"github.com/artnikel/PriceService/proto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"

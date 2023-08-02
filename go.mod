@@ -1,4 +1,4 @@
-module github.com/artnikel/TradingSystem
+module github.com/artnikel/PriceService
 
 go 1.20
 
