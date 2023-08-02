@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -48,6 +49,7 @@ func main() {
 	repoRedis := repository.NewRedisRepository(redisClient)
 	servRedis := service.NewPriceService(repoRedis)
 	handlRedis := handler.NewPriceHandler(servRedis)
+	go servRedis.SendToAllSubscribedChans(context.Background())
 	lis, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
 		log.Fatalf("Cannot create listener: %s", err)

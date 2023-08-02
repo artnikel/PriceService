@@ -2,12 +2,12 @@ package handler
 
 import (
 	"context"
-	"log"
 	"net"
 	"testing"
 
 	"github.com/artnikel/PriceService/internal/handler/mocks"
 	"github.com/artnikel/PriceService/proto"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -15,20 +15,19 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-type testActions struct {
-	Company string
-	Price   float64
+var testActions = []*proto.Actions{
+	{Company: "Starbucks", Price: 178.46},
+	{Company: "McDonalds", Price: 872.96},
 }
 
-func server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceServiceClient, clientCloser func()) {
+func Server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceServiceClient, clientCloser func()) {
 	buffer := 1024 * 1024
 	lis := bufconn.Listen(buffer)
-
 	baseServer := grpc.NewServer()
 	proto.RegisterPriceServiceServer(baseServer, NewPriceHandler(s))
 	go func() {
 		if err := baseServer.Serve(lis); err != nil {
-			log.Printf("error serving server: %v", err)
+			logrus.Printf("error serving server: %v", err)
 		}
 	}()
 
@@ -37,13 +36,13 @@ func server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceS
 			return lis.Dial()
 		}), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Printf("error connecting to server: %v", err)
+		logrus.Printf("error connecting to server: %v", err)
 	}
 
 	closer := func() {
 		err := lis.Close()
 		if err != nil {
-			log.Printf("error closing listener: %v", err)
+			logrus.Printf("error closing listener: %v", err)
 		}
 		baseServer.Stop()
 	}
@@ -53,46 +52,63 @@ func server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceS
 	return client, closer
 }
 
-func TestReadPrices(t *testing.T) {
-	action := testActions{"Microsoft", 725.52}
+func TestSubscribe(t *testing.T) {
+	s := new(mocks.PriceInterface)
 
-	prc := new(mocks.PriceInterface)
-	prc.On("ReadPrices", mock.Anything, mock.AnythingOfType("string")).Return(action.Price, nil)
-
-	client, closer := server(context.Background(), prc)
-	defer closer()
+	s.On("AddSubscriber", mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("[]string")).
+		Return(nil)
+	s.On("DeleteSubscriber", mock.AnythingOfType("uuid.UUID")).
+		Return(nil)
+	s.On("SendToSubscriber", mock.Anything, mock.AnythingOfType("uuid.UUID")).
+		Return(testActions, nil)
+	client, closer := Server(context.Background(), s)
 
 	type expectation struct {
-		rpResponses []*proto.ReadPricesResponse
-		err         error
+		subResponses []*proto.SubscribeResponse
+		err          error
 	}
-
 	respProtoActions := make([]*proto.Actions, 0)
 	respProtoActions = append(respProtoActions,
-		&proto.Actions{Company: action.Company, Price: action.Price})
-	reqSelectedActions := "Microsoft"
+		&proto.Actions{Company: "Starbucks", Price: 178.46},
+		&proto.Actions{Company: "McDonalds", Price: 872.96})
+
+	reqSelectedActions := make([]string, 0)
+	reqSelectedActions = append(reqSelectedActions, "Starbucks", "McDonalds")
 
 	testReqResp := struct {
-		rpRequest    *proto.ReadPricesRequest
+		subReq       *proto.SubscribeRequest
 		expectedResp expectation
-	}{rpRequest: &proto.ReadPricesRequest{Company: reqSelectedActions},
+	}{subReq: &proto.SubscribeRequest{Uuid: "747b6b85-9441-48cd-aee5-932f386ba381", SelectedActions: reqSelectedActions},
 		expectedResp: expectation{
-			rpResponses: []*proto.ReadPricesResponse{
+			subResponses: []*proto.SubscribeResponse{
+				{Actions: respProtoActions},
 				{Actions: respProtoActions},
 			},
 			err: nil,
 		},
 	}
-	out, err := client.ReadPrices(context.Background(), testReqResp.rpRequest)
+
+	out, err := client.Subscribe(context.Background(), testReqResp.subReq)
 	require.NoError(t, err)
-	var outs []*proto.ReadPricesResponse
-	o, err := out.Recv()
-	require.NoError(t, err)
-	outs = append(outs, o)
-	require.Equal(t, len(testReqResp.expectedResp.rpResponses), len(outs))
-	for i, actions := range outs[0].Actions {
-		require.Equal(t, actions.Company, testReqResp.expectedResp.rpResponses[0].Actions[i].Company)
-		require.Equal(t, actions.Price, testReqResp.expectedResp.rpResponses[0].Actions[i].Price)
+	var outs []*proto.SubscribeResponse
+
+	for i := 0; i < 2; i++ {
+		o, err := out.Recv()
+		require.NoError(t, err)
+
+		outs = append(outs, o)
 	}
-	prc.AssertExpectations(t)
+
+	require.Equal(t, len(testReqResp.expectedResp.subResponses), len(outs))
+
+	for i, action := range outs[0].Actions {
+		require.Equal(t, action.Company, testReqResp.expectedResp.subResponses[0].Actions[i].Company)
+		require.Equal(t, action.Price, testReqResp.expectedResp.subResponses[0].Actions[i].Price)
+	}
+	for i, action := range outs[1].Actions {
+		require.Equal(t, action.Company, testReqResp.expectedResp.subResponses[0].Actions[i].Company)
+		require.Equal(t, action.Price, testReqResp.expectedResp.subResponses[0].Actions[i].Price)
+	}
+
+	closer()
 }

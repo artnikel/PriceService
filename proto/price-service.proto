@@ -10,13 +10,14 @@ message Actions {
 }
 
 service PriceService {
-    rpc ReadPrices(ReadPricesRequest) returns (stream ReadPricesResponse) {}
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse) {}
 }
 
-message ReadPricesRequest {
-    string Company = 1;
+message SubscribeRequest {
+    string uuid = 1;
+    repeated string selectedActions = 2;
 }
 
-message ReadPricesResponse {
+message SubscribeResponse {
     repeated Actions Actions = 1;
 }

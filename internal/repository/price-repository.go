@@ -3,10 +3,10 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 
+	"github.com/artnikel/PriceService/internal/model"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -24,38 +24,17 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 
 // nolint gonmd
 // ReadPrices is a method that read price by field company from redis stream adn returns price of this company
-func (r *RedisRepository) ReadPrices(ctx context.Context, company string) (float64, error) {
-	var price float64
-
-	result, err := r.client.XRead(ctx, &redis.XReadArgs{
-		Streams: []string{"messagestream", "0"},
-		Count:   10,
-		Block:   0,
-	}).Result()
+func (r *RedisRepository) ReadPrices(ctx context.Context) (actions []*model.Action, e error) {
+	result, err := r.client.XRevRange(ctx, "messagestream", "+", "-").Result()
 	if err != nil {
-		return 0, fmt.Errorf("error when reading messages from Redis Stream: %w", err)
+		return nil, fmt.Errorf("PriceServiceRepository-ReadFromStream-XRevRange: error: %w", err)
 	}
-
-	for _, message := range result {
-		for _, msg := range message.Messages {
-			data := msg.Values["message"].(string)
-			parts := strings.Split(data, ":")
-			if len(parts) != 2 {
-				return 0, fmt.Errorf("incorrect message format: %s", data)
-			}
-
-			name := strings.TrimSpace(parts[0])
-			priceStr := strings.TrimSpace(parts[1])
-
-			if name == company {
-				price, err = strconv.ParseFloat(priceStr, 64)
-				if err != nil {
-					return 0, fmt.Errorf("error when converting price to number: %w", err)
-				}
-				return price, nil
-			}
-		}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("PriceServiceRepository-ReadFromStream: error: message is empty")
 	}
-
-	return 0, fmt.Errorf("company not found")
+	err = json.Unmarshal([]byte(result[0].Values["message"].(string)), &actions)
+	if err != nil {
+		return nil, fmt.Errorf("PriceServiceRepository-ReadFromStream: error in method json.Unmarshal: %w", err)
+	}
+	return actions, nil
 }
