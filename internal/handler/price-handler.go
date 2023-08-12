@@ -3,6 +3,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/artnikel/PriceService/internal/model"
 	"github.com/artnikel/PriceService/proto"
@@ -12,10 +13,10 @@ import (
 
 // PriceInterface is interface with method for reading prices
 type PriceInterface interface {
-	ReadPrices(ctx context.Context) (actions []*model.Action, err error)
+	ReadPrices(ctx context.Context) (actions []*model.Share, err error)
 	AddSubscriber(subscriberID uuid.UUID, selectedActions []string) error
 	DeleteSubscriber(subscriberID uuid.UUID) error
-	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Actions, error)
+	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Shares, error)
 	SendToAllSubscribedChans(ctx context.Context)
 }
 
@@ -39,31 +40,36 @@ func (h *PriceHandler) Subscribe(req *proto.SubscribeRequest, stream proto.Price
 		logrus.Errorf("PriceHandler-Subscribe: error in method uuid.Parse: %v", err)
 		return err
 	}
-
-	err = h.priceService.AddSubscriber(subscriberID, req.SelectedActions)
+	err = h.priceService.AddSubscriber(subscriberID, req.SelectedShares)
 	if err != nil {
 		logrus.Errorf("PriceHandler-Subscribe-AddSubscriber: error:%v", err)
 		return err
 	}
-
 	for {
-		protoActions, errSend := h.priceService.SendToSubscriber(stream.Context(), subscriberID)
-
+		shares, errSend := h.priceService.SendToSubscriber(stream.Context(), subscriberID)
 		if errSend != nil {
-			logrus.Errorf("PriceHandler-Subscribe-SendToSubscriber: error:%v", err)
-
+			logrus.Infof("PriceHandler-Subscribe-SendToSubscriber: subscriber disconnected:%v", errSend)
 			errDelete := h.priceService.DeleteSubscriber(subscriberID)
 			if errDelete != nil {
-				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", err)
-				return errDelete
+				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", errDelete)
 			}
-
-			return errSend
+			return fmt.Errorf("")
 		}
-		err := stream.Send(&proto.SubscribeResponse{Actions: protoActions})
+		protoShares := make([]*proto.Shares, 0, len(shares))
+		for _, share := range shares {
+			protoShares = append(protoShares, &proto.Shares{
+				Company: share.Company,
+				Price:   share.Price,
+			})
+		}
+		err := stream.Send(&proto.SubscribeResponse{Shares: protoShares})
 		if err != nil {
 			logrus.Errorf("PriceHandler-Subscribe: error in method stream.Send: %v", err)
-			return err
+			errDelete := h.priceService.DeleteSubscriber(subscriberID)
+			if errDelete != nil {
+				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", errDelete)
+			}
+			return fmt.Errorf("PriceHandler-Subscribe-DeleteSubscriber")
 		}
 	}
 }

@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-var testActions = []*proto.Actions{
+var testShares = []*proto.Shares{
 	{Company: "Starbucks", Price: 178.46},
 	{Company: "McDonalds", Price: 872.96},
 }
@@ -30,7 +30,6 @@ func Server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceS
 			logrus.Printf("error serving server: %v", err)
 		}
 	}()
-
 	conn, err := grpc.DialContext(ctx, "",
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return lis.Dial()
@@ -38,7 +37,6 @@ func Server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceS
 	if err != nil {
 		logrus.Printf("error connecting to server: %v", err)
 	}
-
 	closer := func() {
 		err := lis.Close()
 		if err != nil {
@@ -46,7 +44,6 @@ func Server(ctx context.Context, s *mocks.PriceInterface) (psClient proto.PriceS
 		}
 		baseServer.Stop()
 	}
-
 	client := proto.NewPriceServiceClient(conn)
 
 	return client, closer
@@ -60,29 +57,29 @@ func TestSubscribe(t *testing.T) {
 	s.On("DeleteSubscriber", mock.AnythingOfType("uuid.UUID")).
 		Return(nil)
 	s.On("SendToSubscriber", mock.Anything, mock.AnythingOfType("uuid.UUID")).
-		Return(testActions, nil)
+		Return(testShares, nil)
 	client, closer := Server(context.Background(), s)
 
 	type expectation struct {
 		subResponses []*proto.SubscribeResponse
 		err          error
 	}
-	respProtoActions := make([]*proto.Actions, 0)
-	respProtoActions = append(respProtoActions,
-		&proto.Actions{Company: "Starbucks", Price: 178.46},
-		&proto.Actions{Company: "McDonalds", Price: 872.96})
+	respProtoShares := make([]*proto.Shares, 0)
+	respProtoShares = append(respProtoShares,
+		&proto.Shares{Company: "Starbucks", Price: 178.46},
+		&proto.Shares{Company: "McDonalds", Price: 872.96})
 
-	reqSelectedActions := make([]string, 0)
-	reqSelectedActions = append(reqSelectedActions, "Starbucks", "McDonalds")
+	reqSelectedShares := make([]string, 0)
+	reqSelectedShares = append(reqSelectedShares, "Starbucks", "McDonalds")
 
 	testReqResp := struct {
 		subReq       *proto.SubscribeRequest
 		expectedResp expectation
-	}{subReq: &proto.SubscribeRequest{Uuid: "747b6b85-9441-48cd-aee5-932f386ba381", SelectedActions: reqSelectedActions},
+	}{subReq: &proto.SubscribeRequest{Uuid: "747b6b85-9441-48cd-aee5-932f386ba381", SelectedShares: reqSelectedShares},
 		expectedResp: expectation{
 			subResponses: []*proto.SubscribeResponse{
-				{Actions: respProtoActions},
-				{Actions: respProtoActions},
+				{Shares: respProtoShares},
+				{Shares: respProtoShares},
 			},
 			err: nil,
 		},
@@ -101,13 +98,13 @@ func TestSubscribe(t *testing.T) {
 
 	require.Equal(t, len(testReqResp.expectedResp.subResponses), len(outs))
 
-	for i, action := range outs[0].Actions {
-		require.Equal(t, action.Company, testReqResp.expectedResp.subResponses[0].Actions[i].Company)
-		require.Equal(t, action.Price, testReqResp.expectedResp.subResponses[0].Actions[i].Price)
+	for i, share := range outs[0].Shares {
+		require.Equal(t, share.Company, testReqResp.expectedResp.subResponses[0].Shares[i].Company)
+		require.Equal(t, share.Price, testReqResp.expectedResp.subResponses[0].Shares[i].Price)
 	}
-	for i, action := range outs[1].Actions {
-		require.Equal(t, action.Company, testReqResp.expectedResp.subResponses[0].Actions[i].Company)
-		require.Equal(t, action.Price, testReqResp.expectedResp.subResponses[0].Actions[i].Price)
+	for i, share := range outs[1].Shares {
+		require.Equal(t, share.Company, testReqResp.expectedResp.subResponses[0].Shares[i].Company)
+		require.Equal(t, share.Price, testReqResp.expectedResp.subResponses[0].Shares[i].Price)
 	}
 
 	closer()

@@ -48,15 +48,15 @@ func (_m *PriceInterface) DeleteSubscriber(subscriberID uuid.UUID) error {
 }
 
 // ReadPrices provides a mock function with given fields: ctx
-func (_m *PriceInterface) ReadPrices(ctx context.Context) ([]*model.Action, error) {
+func (_m *PriceInterface) ReadPrices(ctx context.Context) ([]*model.Share, error) {
 	ret := _m.Called(ctx)
 
-	var r0 []*model.Action
-	if rf, ok := ret.Get(0).(func(context.Context) []*model.Action); ok {
+	var r0 []*model.Share
+	if rf, ok := ret.Get(0).(func(context.Context) []*model.Share); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.Action)
+			r0 = ret.Get(0).([]*model.Share)
 		}
 	}
 
@@ -76,15 +76,15 @@ func (_m *PriceInterface) SendToAllSubscribedChans(ctx context.Context) {
 }
 
 // SendToSubscriber provides a mock function with given fields: ctx, subscriberID
-func (_m *PriceInterface) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Actions, error) {
+func (_m *PriceInterface) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Shares, error) {
 	ret := _m.Called(ctx, subscriberID)
 
-	var r0 []*proto.Actions
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []*proto.Actions); ok {
+	var r0 []*proto.Shares
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) []*proto.Shares); ok {
 		r0 = rf(ctx, subscriberID)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*proto.Actions)
+			r0 = ret.Get(0).([]*proto.Shares)
 		}
 	}
 
