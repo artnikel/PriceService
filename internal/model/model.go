@@ -3,16 +3,20 @@ package model
 
 import (
 	"sync"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
-// Action is a struct for actions entity
-type Action struct {
+// Share is a struct for shares entity
+type Share struct {
 	Company string
-	Price   float64
+	Price   decimal.Decimal
 }
 
 // SubscribersManager contains all subscribers by uuid and their subscribed shares in map subscribers
 type SubscribersManager struct {
-	Subscribers        sync.Map
-	SubscribersActions sync.Map
+	Mu               sync.RWMutex
+	Subscribers      map[uuid.UUID][]string
+	SubscribersShare map[uuid.UUID]chan []*Share
 }

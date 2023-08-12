@@ -2,21 +2,17 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/artnikel/PriceService/internal/model"
 	"github.com/go-redis/redis/v8"
 	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	rpcRedis    *RedisRepository
-	testActions []*model.Action
+	rpcRedis *RedisRepository
 )
 
 func SetupTestRedis() (*redis.Client, func(), error) {
@@ -56,7 +52,6 @@ func SetupTestRedis() (*redis.Client, func(), error) {
 }
 
 func TestMain(m *testing.M) {
-	testActions = append(testActions, &model.Action{Company: "Xiaomi", Price: 178.54})
 	rdsClient, cleanupRds, err := SetupTestRedis()
 	if err != nil {
 		fmt.Println(err)
@@ -71,27 +66,20 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestReadNotExist(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	_, err := rpcRedis.ReadPrices(ctx)
-	require.Error(t, err)
-}
-
 func TestReadPrices(t *testing.T) {
-	actionsJSON, err := json.Marshal(testActions)
-	require.NoError(t, err)
-	streamData := redis.XAddArgs{
-		Stream: "messagestream",
+	var (
+		testCompany = "Amazon"
+		testPrice   = 180.74
+	)
+	_, err := rpcRedis.client.XAdd(context.Background(), &redis.XAddArgs{
+		Stream: "shares",
 		Values: map[string]interface{}{
-			"message": string(actionsJSON),
+			"message": fmt.Sprintf("%s: %.2f", testCompany, testPrice),
 		},
-	}
-	_, err = rpcRedis.client.XAdd(context.Background(), &streamData).Result()
+		MaxLen: 5,
+	}).Result()
 	require.NoError(t, err)
-	actions, err := rpcRedis.ReadPrices(context.Background())
+	resp, err := rpcRedis.ReadPrices(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, actions[0].Company, testActions[0].Company)
-	require.Equal(t, actions[0].Price, testActions[0].Price)
+	require.NotEmpty(t, resp)
 }

@@ -15,15 +15,15 @@ type PriceRepository struct {
 }
 
 // ReadPrices provides a mock function with given fields: ctx
-func (_m *PriceRepository) ReadPrices(ctx context.Context) ([]*model.Action, error) {
+func (_m *PriceRepository) ReadPrices(ctx context.Context) ([]*model.Share, error) {
 	ret := _m.Called(ctx)
 
-	var r0 []*model.Action
-	if rf, ok := ret.Get(0).(func(context.Context) []*model.Action); ok {
+	var r0 []*model.Share
+	if rf, ok := ret.Get(0).(func(context.Context) []*model.Share); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*model.Action)
+			r0 = ret.Get(0).([]*model.Share)
 		}
 	}
 

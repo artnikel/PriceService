@@ -4,7 +4,7 @@ package proto;
 
 option go_package = "github.com/artnikel/TradingSystem/proto";
 
-message Actions {
+message Shares {
     string Company = 1;
     double Price = 2;
 }
@@ -15,9 +15,9 @@ service PriceService {
 
 message SubscribeRequest {
     string uuid = 1;
-    repeated string selectedActions = 2;
+    repeated string selectedShares = 2;
 }
 
 message SubscribeResponse {
-    repeated Actions Actions = 1;
+    repeated Shares Shares = 1;
 }
