@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/artnikel/PriceService/internal/model"
 	"github.com/artnikel/PriceService/proto"
@@ -69,26 +68,32 @@ func (p *PriceService) ReadPrices(ctx context.Context) (shares []*model.Share, e
 // SendToAllSubscribedChans is a method that send to all subscribes chanells
 func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 	for {
-		if len(p.manager.Subscribers) > 0 {
-			actions, err := p.ReadPrices(ctx)
-			if err != nil {
-				log.Fatalf("PriceServiceService-SendToAllSubscribedChans-ReadPrices: error %v", err)
-				return
-			}
-			for subID, selectedActions := range p.manager.Subscribers {
-				tempActions := make([]*model.Share, 0)
-				for _, action := range actions {
-					if strings.Contains(strings.Join(selectedActions, ","), action.Company) {
-						tempActions = append(tempActions, action)
+		if len(p.manager.Subscribers) == 0 {
+			continue
+		}
+		shares, err := p.ReadPrices(ctx)
+		if err != nil {
+			log.Fatalf("PriceServiceService -> SendToAllSubscribedChans: %v", err)
+			return
+		}
+		p.manager.Mu.Lock()
+		for subID, selcetedShares := range p.manager.Subscribers {
+			tempShares := make([]*model.Share, 0)
+			for _, share := range shares {
+				for _, selectedShare := range selcetedShares {
+					if selectedShare == share.Company {
+						tempShares = append(tempShares, share)
+						break
 					}
 				}
-				select {
-				case <-ctx.Done():
-					return
-				case p.manager.SubscribersShare[subID] <- tempActions:
-				}
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case p.manager.SubscribersShare[subID] <- tempShares:
 			}
 		}
+		p.manager.Mu.Unlock()
 	}
 }
 
