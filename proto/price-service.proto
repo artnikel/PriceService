@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/artnikel/TradingSystem/proto";
+option go_package = "github.com/artnikel/PriceService/proto";
 
 message Shares {
     string Company = 1;
@@ -19,5 +19,5 @@ message SubscribeRequest {
 }
 
 message SubscribeResponse {
-    repeated Shares Shares = 1;
+    Shares Shares = 1;
 }

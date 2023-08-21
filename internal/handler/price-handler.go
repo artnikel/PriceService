@@ -13,10 +13,10 @@ import (
 
 // PriceInterface is interface with method for reading prices
 type PriceInterface interface {
-	ReadPrices(ctx context.Context) (actions []*model.Share, err error)
-	AddSubscriber(subscriberID uuid.UUID, selectedActions []string) error
+	ReadPrices(ctx context.Context) (share model.Share, err error)
+	AddSubscriber(subscriberID uuid.UUID, selectedShare []string) error
 	DeleteSubscriber(subscriberID uuid.UUID) error
-	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Shares, error)
+	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (proto.Shares, error)
 	SendToAllSubscribedChans(ctx context.Context)
 }
 
@@ -53,10 +53,10 @@ func (h *PriceHandler) Subscribe(req *proto.SubscribeRequest, stream proto.Price
 			if errDelete != nil {
 				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", errDelete)
 			}
-			return fmt.Errorf("PriceHandler-Subscribe-SendToSubscriber: error:%w",errSend)
+			return fmt.Errorf("PriceHandler-Subscribe-SendToSubscriber: error:%w", errSend)
 		}
 
-		err := stream.Send(&proto.SubscribeResponse{Shares: protoShares})
+		err := stream.Send(&proto.SubscribeResponse{Shares: &protoShares})
 		if err != nil {
 			logrus.Infof("PriceHandler-Subscribe-stream.Send: %v", err)
 			errDelete := h.priceService.DeleteSubscriber(subscriberID)

@@ -25,8 +25,7 @@ func NewRedisRepository(client *redis.Client) *RedisRepository {
 
 // nolint gonmd
 // ReadPrices is a method that read price by field company from redis stream adn returns price of this company
-func (r *RedisRepository) ReadPrices(ctx context.Context) (shares []*model.Share, e error) {
-	tempMap := make(map[string]decimal.Decimal)
+func (r *RedisRepository) ReadPrices(ctx context.Context) (share model.Share, e error) {
 	for {
 		result, err := r.client.XRead(ctx, &redis.XReadArgs{
 			Streams: []string{"shares", "0"},
@@ -44,7 +43,7 @@ func (r *RedisRepository) ReadPrices(ctx context.Context) (shares []*model.Share
 					log.Fatalf("Incorrect message format: %s", data)
 					continue
 				}
-				company := strings.TrimSpace(parts[0])
+				share.Company = strings.TrimSpace(parts[0])
 				priceStr := strings.TrimSpace(parts[1])
 
 				price, err := decimal.NewFromString(priceStr)
@@ -52,14 +51,10 @@ func (r *RedisRepository) ReadPrices(ctx context.Context) (shares []*model.Share
 					log.Fatalf("Error when converting price to number: %v", err)
 					continue
 				}
-				tempMap[company] = price
-				shares = append(shares, &model.Share{
-					Company: company,
-					Price:   price,
-				})
+				share.Price = price
 			}
 		}
-		return shares, nil
+		return share, nil
 	}
 
 }

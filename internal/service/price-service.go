@@ -13,7 +13,7 @@ import (
 
 // PriceRepository is interface with method for reading prices
 type PriceRepository interface {
-	ReadPrices(ctx context.Context) ([]*model.Share, error)
+	ReadPrices(ctx context.Context) (model.Share, error)
 }
 
 // PriceService contains PriceRepository interface
@@ -26,7 +26,7 @@ type PriceService struct {
 func NewPriceService(priceRep PriceRepository) *PriceService {
 	return &PriceService{
 		priceRep: priceRep,
-		manager: &model.SubscribersManager{SubscribersShare: make(map[uuid.UUID]chan []*model.Share),
+		manager: &model.SubscribersManager{SubscribersShare: make(map[uuid.UUID]chan model.Share),
 			Subscribers: make(map[uuid.UUID][]string)}}
 }
 
@@ -37,7 +37,7 @@ func (p *PriceService) AddSubscriber(subscriberID uuid.UUID, selectedActions []s
 	defer p.manager.Mu.Unlock()
 	if _, ok := p.manager.Subscribers[subscriberID]; !ok {
 		p.manager.Subscribers[subscriberID] = selectedActions
-		p.manager.SubscribersShare[subscriberID] = make(chan []*model.Share, msgs)
+		p.manager.SubscribersShare[subscriberID] = make(chan model.Share, msgs)
 		return nil
 	}
 	return fmt.Errorf("PriceService-AddSubscriber: error: subscriber with such ID already exists")
@@ -57,12 +57,12 @@ func (p *PriceService) DeleteSubscriber(subscriberID uuid.UUID) error {
 }
 
 // ReadPrices is a method of GeneratorService that calls method of Repository
-func (p *PriceService) ReadPrices(ctx context.Context) (shares []*model.Share, e error) {
-	shares, err := p.priceRep.ReadPrices(ctx)
+func (p *PriceService) ReadPrices(ctx context.Context) (share model.Share, e error) {
+	share, err := p.priceRep.ReadPrices(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("PriceService-ReadPrices: error: %w", err)
+		return model.Share{}, fmt.Errorf("PriceService-ReadPrices: error: %w", err)
 	}
-	return shares, nil
+	return share, nil
 }
 
 // SendToAllSubscribedChans is a method that send to all subscribes chanells
@@ -71,44 +71,37 @@ func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 		if len(p.manager.Subscribers) == 0 {
 			continue
 		}
-		shares, err := p.ReadPrices(ctx)
+		share, err := p.ReadPrices(ctx)
 		if err != nil {
 			log.Fatalf("PriceServiceService -> SendToAllSubscribedChans: %v", err)
 			return
 		}
 		p.manager.Mu.Lock()
-		for subID, selcetedShares := range p.manager.Subscribers {
-			tempShares := make([]*model.Share, 0)
-			for _, share := range shares {
-				for _, selectedShare := range selcetedShares {
-					if selectedShare == share.Company {
-						tempShares = append(tempShares, share)
-						break
-					}
+		for subscriberID, selectedShares := range p.manager.Subscribers {
+			if len(p.manager.SubscribersShare[subscriberID]) != 0 {
+				continue
+			}
+			for _, selectedShare := range selectedShares {
+				select {
+				case <-ctx.Done():
+					p.manager.Mu.Unlock()
+					return
+				case p.manager.SubscribersShare[subscriberID] <- model.Share{Company: selectedShare, Price: share.Price}:
 				}
 			}
-			select {
-			case <-ctx.Done():
-				return
-			case p.manager.SubscribersShare[subID] <- tempShares:
-			}
 		}
-		p.manager.Mu.Unlock()
 	}
 }
 
 // SendToSubscriber calls SendToSubscriber method of repository
-func (p *PriceService) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (protoShares []*proto.Shares, err error) {
+func (p *PriceService) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (proto.Shares, error) {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
-	case shares := <-p.manager.SubscribersShare[subscriberID]:
-		for _, share := range shares {
-			protoShares = append(protoShares, &proto.Shares{
-				Company: share.Company,
-				Price:   share.Price.InexactFloat64(),
-			})
-		}
-		return protoShares, nil
+		return proto.Shares{}, ctx.Err()
+	case share := <-p.manager.SubscribersShare[subscriberID]:
+		return proto.Shares{
+			Company: share.Company,
+			Price:   share.Price.InexactFloat64(),
+		}, nil
 	}
 }
