@@ -13,7 +13,7 @@ import (
 
 // PriceInterface is interface with method for reading prices
 type PriceInterface interface {
-	ReadPrices(ctx context.Context) (share model.Share, err error)
+	ReadPrices(ctx context.Context) (shares []*model.Share, err error)
 	AddSubscriber(subscriberID uuid.UUID, selectedShare []string) error
 	DeleteSubscriber(subscriberID uuid.UUID) error
 	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (proto.Shares, error)

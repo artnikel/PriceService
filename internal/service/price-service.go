@@ -9,11 +9,12 @@ import (
 	"github.com/artnikel/PriceService/internal/model"
 	"github.com/artnikel/PriceService/proto"
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // PriceRepository is interface with method for reading prices
 type PriceRepository interface {
-	ReadPrices(ctx context.Context) (model.Share, error)
+	ReadPrices(ctx context.Context) ([]*model.Share, error)
 }
 
 // PriceService contains PriceRepository interface
@@ -57,24 +58,28 @@ func (p *PriceService) DeleteSubscriber(subscriberID uuid.UUID) error {
 }
 
 // ReadPrices is a method of GeneratorService that calls method of Repository
-func (p *PriceService) ReadPrices(ctx context.Context) (share model.Share, e error) {
-	share, err := p.priceRep.ReadPrices(ctx)
+func (p *PriceService) ReadPrices(ctx context.Context) (shares []*model.Share, e error) {
+	shares, err := p.priceRep.ReadPrices(ctx)
 	if err != nil {
-		return model.Share{}, fmt.Errorf("PriceService-ReadPrices: error: %w", err)
+		return nil, fmt.Errorf("PriceService-ReadPrices: error: %w", err)
 	}
-	return share, nil
+	return shares, nil
 }
 
 // SendToAllSubscribedChans is a method that send to all subscribes chanells
 func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
+	subShares := make(map[string]decimal.Decimal)
 	for {
 		if len(p.manager.Subscribers) == 0 {
 			continue
 		}
-		share, err := p.ReadPrices(ctx)
+		shares, err := p.ReadPrices(ctx)
 		if err != nil {
 			log.Fatalf("PriceServiceService -> SendToAllSubscribedChans: %v", err)
 			return
+		}
+		for _, share := range shares {
+			subShares[share.Company] = share.Price
 		}
 		p.manager.Mu.Lock()
 		for subscriberID, selectedShares := range p.manager.Subscribers {
@@ -86,10 +91,11 @@ func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 				case <-ctx.Done():
 					p.manager.Mu.Unlock()
 					return
-				case p.manager.SubscribersShare[subscriberID] <- model.Share{Company: selectedShare, Price: share.Price}:
+				case p.manager.SubscribersShare[subscriberID] <- model.Share{Company: selectedShare, Price: subShares[selectedShare]}:
 				}
 			}
 		}
+		p.manager.Mu.Unlock()
 	}
 }
 
