@@ -19,5 +19,5 @@ message SubscribeRequest {
 }
 
 message SubscribeResponse {
-    Shares Shares = 1;
+    repeated Shares Shares = 1;
 }

@@ -100,14 +100,22 @@ func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 }
 
 // SendToSubscriber calls SendToSubscriber method of repository
-func (p *PriceService) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (proto.Shares, error) {
+func (p *PriceService) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (protoShares []*proto.Shares, e error) {
 	select {
 	case <-ctx.Done():
-		return proto.Shares{}, ctx.Err()
+		return nil, ctx.Err()
 	case share := <-p.manager.SubscribersShare[subscriberID]:
-		return proto.Shares{
-			Company: share.Company,
-			Price:   share.Price.InexactFloat64(),
-		}, nil
+		protoShares = append(protoShares, &proto.Shares{
+			Company:  share.Company,
+			Price: share.Price.InexactFloat64(),
+		})
+		for i := 1; i < len(p.manager.Subscribers[subscriberID]); i++ {
+			share = <-p.manager.SubscribersShare[subscriberID]
+			protoShares = append(protoShares, &proto.Shares{
+				Company:  share.Company,
+				Price: share.Price.InexactFloat64(),
+			})
+		}
+		return protoShares, nil
 	}
 }
