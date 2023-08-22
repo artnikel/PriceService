@@ -32,13 +32,12 @@ func NewPriceService(priceRep PriceRepository) *PriceService {
 }
 
 // AddSubscriber adds new subscriber to subscribe map in SubscriberManager
-func (p *PriceService) AddSubscriber(subscriberID uuid.UUID, selectedActions []string) error {
-	const msgs = 1
+func (p *PriceService) AddSubscriber(subscriberID uuid.UUID, selectedShares []string) error {
 	p.manager.Mu.Lock()
 	defer p.manager.Mu.Unlock()
 	if _, ok := p.manager.Subscribers[subscriberID]; !ok {
-		p.manager.Subscribers[subscriberID] = selectedActions
-		p.manager.SubscribersShare[subscriberID] = make(chan model.Share, msgs)
+		p.manager.Subscribers[subscriberID] = selectedShares
+		p.manager.SubscribersShare[subscriberID] = make(chan model.Share, len(selectedShares))
 		return nil
 	}
 	return fmt.Errorf("PriceService-AddSubscriber: error: subscriber with such ID already exists")
