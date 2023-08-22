@@ -17,7 +17,7 @@ type PriceInterface interface {
 	AddSubscriber(subscriberID uuid.UUID, selectedShare []string) error
 	DeleteSubscriber(subscriberID uuid.UUID) error
 	SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Shares, error)
-	SendToAllSubscribedChans(ctx context.Context)
+	SubscribeAll(ctx context.Context)
 }
 
 // PriceHandler contains PriceInterface interface and UnimplementedPriceServiceServer

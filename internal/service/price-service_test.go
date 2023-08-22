@@ -1,109 +1,147 @@
 package service
 
-// import (
-// 	"context"
-// 	"testing"
-// 	"time"
+import (
+	"context"
+	"testing"
+	"time"
 
-// 	"github.com/artnikel/PriceService/internal/model"
-// 	"github.com/artnikel/PriceService/internal/service/mocks"
-// 	"github.com/google/uuid"
-// 	"github.com/shopspring/decimal"
-// 	"github.com/stretchr/testify/mock"
-// 	"github.com/stretchr/testify/require"
-// )
+	"github.com/artnikel/PriceService/internal/model"
+	"github.com/artnikel/PriceService/internal/service/mocks"
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
 
-// var (
-// 	testSubscriberID   = uuid.New()
-// 	testSelectedShares = []string{
-// 		"Porsche",
-// 		"Facebook",
-// 	}
-// 	testShares = []*model.Share{
-// 		{Company: "Porsche", Price: decimal.NewFromFloat(457.23)},
-// 		{Company: "Facebook", Price: decimal.NewFromFloat(842.45)},
-// 		{Company: "IKEA", Price: decimal.NewFromFloat(1743.88)},
-// 	}
-// )
+var (
+	testSubscriberID   = uuid.New()
+	testSelectedShares = []string{
+		"Porsche",
+		"Facebook",
+	}
+	testShares = []*model.Share{
+		{Company: "Porsche", Price: decimal.NewFromFloat(457.23)},
+		{Company: "Facebook", Price: decimal.NewFromFloat(842.45)},
+		{Company: "IKEA", Price: decimal.NewFromFloat(1743.88)},
+	}
+)
 
-// func TestAddSubscriber(t *testing.T) {
-// 	rep := new(mocks.PriceRepository)
-// 	srv := NewPriceService(rep)
+func TestAddSubscriber(t *testing.T) {
+	rep := new(mocks.PriceRepository)
+	srv := NewPriceService(rep)
 
-// 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
-// 	require.NoError(t, err)
+	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
+	require.NoError(t, err)
 
-// 	selectedActions, ok := srv.manager.Subscribers[testSubscriberID]
-// 	require.True(t, ok)
-// 	require.Equal(t, len(selectedActions), len(testSelectedShares))
-// 	rep.AssertExpectations(t)
-// }
+	selectedActions, ok := srv.manager.Subscribers[testSubscriberID]
+	require.True(t, ok)
+	require.Equal(t, len(selectedActions), len(testSelectedShares))
+	rep.AssertExpectations(t)
+}
 
-// func TestDeleteSubscriber(t *testing.T) {
-// 	rep := new(mocks.PriceRepository)
-// 	srv := NewPriceService(rep)
+func TestDeleteSubscriber(t *testing.T) {
+	rep := new(mocks.PriceRepository)
+	srv := NewPriceService(rep)
 
-// 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
-// 	require.NoError(t, err)
+	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
+	require.NoError(t, err)
 
-// 	err = srv.DeleteSubscriber(testSubscriberID)
-// 	require.NoError(t, err)
+	err = srv.DeleteSubscriber(testSubscriberID)
+	require.NoError(t, err)
 
-// 	err = srv.AddSubscriber(testSubscriberID, testSelectedShares)
-// 	require.NoError(t, err)
-// 	rep.AssertExpectations(t)
-// }
+	err = srv.AddSubscriber(testSubscriberID, testSelectedShares)
+	require.NoError(t, err)
+	rep.AssertExpectations(t)
+}
 
-// func TestSendToAllSubscribedChans(t *testing.T) {
-// 	rep := new(mocks.PriceRepository)
-// 	rep.On("ReadPrices", mock.Anything).
-// 		Return(testShares, nil)
+func TestSubscribeAll(t *testing.T) {
+	rep := new(mocks.PriceRepository)
+	rep.On("ReadPrices", mock.Anything).
+		Return(testShares, nil)
 
-// 	srv := NewPriceService(rep)
+	srv := NewPriceService(rep)
 
-// 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
-// 	require.NoError(t, err)
+	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
+	require.NoError(t, err)
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-// 	srv.SendToAllSubscribedChans(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// 	close(srv.manager.SubscribersShare[testSubscriberID])
-// 	shares := <-srv.manager.SubscribersShare[testSubscriberID]
-// 	cancel()
-// 	require.Equal(t, len(testSelectedShares), len(shares))
+	go func() {
+		srv.SubscribeAll(ctx)
+	}()
 
-// 	rep.AssertExpectations(t)
-// }
+	time.Sleep(time.Second)
+	cancel()
 
-// func TestSendToSubscriber(t *testing.T) {
-// 	rep := new(mocks.PriceRepository)
-// 	srv := NewPriceService(rep)
+	for _, selectedShare := range testSelectedShares {
+		expectedPrice := decimal.Zero
+		for _, share := range testShares {
+			if share.Company == selectedShare {
+				expectedPrice = share.Price
+				break
+			}
+		}
+		receivedShare := <-srv.manager.SubscribersShare[testSubscriberID]
+		require.Equal(t, expectedPrice, receivedShare.Price)
+	}
+	rep.AssertExpectations(t)
+}
 
-// 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
-// 	require.NoError(t, err)
+func TestSendToSubscriber(t *testing.T) {
+	rep := new(mocks.PriceRepository)
+	rep.On("ReadPrices", mock.Anything).
+		Return(testShares, nil)
 
-// 	srv.manager.SubscribersShare[testSubscriberID] <- testShares
+	srv := NewPriceService(rep)
 
-// 	close(srv.manager.SubscribersShare[testSubscriberID])
+	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
+	require.NoError(t, err)
 
-// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-// 	actions, err := srv.SendToSubscriber(ctx, testSubscriberID)
-// 	cancel()
-// 	require.NoError(t, err)
+	ctxCanceled, cancel := context.WithCancel(context.Background())
+	cancel()
 
-// 	require.Equal(t, len(testShares), len(actions))
+	shares, err := srv.SendToSubscriber(ctxCanceled, testSubscriberID)
+	require.Error(t, err)
+	require.Nil(t, shares)
 
-// 	rep.AssertExpectations(t)
-// }
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// func TestReadPrices(t *testing.T) {
-// 	rep := new(mocks.PriceRepository)
-// 	rep.On("ReadPrices", mock.Anything).
-// 		Return(testShares, nil).
-// 		Once()
-// 	srv := NewPriceService(rep)
-// 	actions, err := srv.ReadPrices(context.Background())
-// 	require.NoError(t, err)
-// 	require.Equal(t, len(actions), len(testShares))
-// 	rep.AssertExpectations(t)
-// }
+	go srv.SubscribeAll(ctx)
+
+	shares, err = srv.SendToSubscriber(ctx, testSubscriberID)
+	require.NoError(t, err)
+	require.NotNil(t, shares)
+	require.Len(t, shares, len(testSelectedShares))
+
+	for i, selectedShare := range testSelectedShares {
+		expectedPrice := decimal.Zero
+		for _, share := range testShares {
+			if share.Company == selectedShare {
+				expectedPrice = share.Price
+				break
+			}
+		}
+		require.Equal(t, expectedPrice.InexactFloat64(), shares[i].Price)
+	}
+
+	cancel()
+
+	err = srv.DeleteSubscriber(testSubscriberID)
+	require.NoError(t, err)
+
+	rep.AssertExpectations(t)
+}
+
+func TestReadPrices(t *testing.T) {
+	rep := new(mocks.PriceRepository)
+	rep.On("ReadPrices", mock.Anything).
+		Return(testShares, nil).
+		Once()
+	srv := NewPriceService(rep)
+	actions, err := srv.ReadPrices(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, len(actions), len(testShares))
+	rep.AssertExpectations(t)
+}

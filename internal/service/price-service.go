@@ -65,8 +65,8 @@ func (p *PriceService) ReadPrices(ctx context.Context) (shares []*model.Share, e
 	return shares, nil
 }
 
-// SendToAllSubscribedChans is a method that send to all subscribes chanells
-func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
+// SubscribeAll is a method that send to all subscribes chanells
+func (p *PriceService) SubscribeAll(ctx context.Context) {
 	subShares := make(map[string]decimal.Decimal)
 	for {
 		if len(p.manager.Subscribers) == 0 {
@@ -74,7 +74,7 @@ func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 		}
 		shares, err := p.ReadPrices(ctx)
 		if err != nil {
-			log.Fatalf("PriceServiceService -> SendToAllSubscribedChans: %v", err)
+			log.Fatalf("PriceService-SubscribeAll: error: %v", err)
 			return
 		}
 		for _, share := range shares {
@@ -98,21 +98,21 @@ func (p *PriceService) SendToAllSubscribedChans(ctx context.Context) {
 	}
 }
 
-// SendToSubscriber calls SendToSubscriber method of repository
+// SendToSubscriber send shares in proto format to subscriber
 func (p *PriceService) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) (protoShares []*proto.Shares, e error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case share := <-p.manager.SubscribersShare[subscriberID]:
 		protoShares = append(protoShares, &proto.Shares{
-			Company:  share.Company,
-			Price: share.Price.InexactFloat64(),
+			Company: share.Company,
+			Price:   share.Price.InexactFloat64(),
 		})
 		for i := 1; i < len(p.manager.Subscribers[subscriberID]); i++ {
 			share = <-p.manager.SubscribersShare[subscriberID]
 			protoShares = append(protoShares, &proto.Shares{
-				Company:  share.Company,
-				Price: share.Price.InexactFloat64(),
+				Company: share.Company,
+				Price:   share.Price.InexactFloat64(),
 			})
 		}
 		return protoShares, nil

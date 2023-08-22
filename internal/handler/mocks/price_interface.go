@@ -19,13 +19,13 @@ type PriceInterface struct {
 	mock.Mock
 }
 
-// AddSubscriber provides a mock function with given fields: subscriberID, selectedActions
-func (_m *PriceInterface) AddSubscriber(subscriberID uuid.UUID, selectedActions []string) error {
-	ret := _m.Called(subscriberID, selectedActions)
+// AddSubscriber provides a mock function with given fields: subscriberID, selectedShare
+func (_m *PriceInterface) AddSubscriber(subscriberID uuid.UUID, selectedShare []string) error {
+	ret := _m.Called(subscriberID, selectedShare)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(uuid.UUID, []string) error); ok {
-		r0 = rf(subscriberID, selectedActions)
+		r0 = rf(subscriberID, selectedShare)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -70,11 +70,6 @@ func (_m *PriceInterface) ReadPrices(ctx context.Context) ([]*model.Share, error
 	return r0, r1
 }
 
-// SendToAllSubscribedChans provides a mock function with given fields: ctx
-func (_m *PriceInterface) SendToAllSubscribedChans(ctx context.Context) {
-	_m.Called(ctx)
-}
-
 // SendToSubscriber provides a mock function with given fields: ctx, subscriberID
 func (_m *PriceInterface) SendToSubscriber(ctx context.Context, subscriberID uuid.UUID) ([]*proto.Shares, error) {
 	ret := _m.Called(ctx, subscriberID)
@@ -96,6 +91,11 @@ func (_m *PriceInterface) SendToSubscriber(ctx context.Context, subscriberID uui
 	}
 
 	return r0, r1
+}
+
+// SubscribeAll provides a mock function with given fields: ctx
+func (_m *PriceInterface) SubscribeAll(ctx context.Context) {
+	_m.Called(ctx)
 }
 
 type mockConstructorTestingTNewPriceInterface interface {
