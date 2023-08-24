@@ -12,22 +12,21 @@ import (
 	"github.com/artnikel/PriceService/internal/repository"
 	"github.com/artnikel/PriceService/internal/service"
 	"github.com/artnikel/PriceService/proto"
-	"github.com/caarlos0/env"
 	"github.com/go-redis/redis/v8"
 	"google.golang.org/grpc"
 )
 
 func connectRedis() (*redis.Client, error) {
-	cfg := config.Variables{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
+	cfg, err := config.New()
+	if err != nil {
+		log.Fatal("Could not parse config: ", err)
 	}
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisPriceAddress,
 		Password: cfg.RedisPricePassword,
 		DB:       0,
 	})
-	_, err := client.Ping(client.Context()).Result()
+	_, err = client.Ping(client.Context()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("error in method client.Ping(): %v", err)
 	}

@@ -34,14 +34,14 @@ func (r *RedisRepository) ReadPrices(ctx context.Context) (shares []*model.Share
 			Block:   0,
 		}).Result()
 		if err != nil {
-			log.Fatalf("Error when reading messages from Redis Stream:%v", err)
+			log.Fatalf("RedisRepository-ReadPrices: Error when reading messages from Redis Stream:%v", err)
 		}
 		for _, message := range result {
 			for _, msg := range message.Messages {
 				data := msg.Values["message"].(string)
 				parts := strings.Split(data, ":")
 				if len(parts) != 2 {
-					log.Fatalf("Incorrect message format: %s", data)
+					log.Fatalf("RedisRepository-ReadPrices: Incorrect message format: %s", data)
 					continue
 				}
 				company := strings.TrimSpace(parts[0])
@@ -49,7 +49,7 @@ func (r *RedisRepository) ReadPrices(ctx context.Context) (shares []*model.Share
 
 				price, err := decimal.NewFromString(priceStr)
 				if err != nil {
-					log.Fatalf("Error when converting price to number: %v", err)
+					log.Fatalf("RedisRepository-ReadPrices: Error when converting price to number: %v", err)
 					continue
 				}
 				tempMap[company] = price
