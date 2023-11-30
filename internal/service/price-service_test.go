@@ -29,10 +29,8 @@ var (
 func TestAddSubscriber(t *testing.T) {
 	rep := new(mocks.PriceRepository)
 	srv := NewPriceService(rep)
-
 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
 	require.NoError(t, err)
-
 	selectedActions, ok := srv.manager.Subscribers[testSubscriberID]
 	require.True(t, ok)
 	require.Equal(t, len(selectedActions), len(testSelectedShares))
@@ -42,13 +40,10 @@ func TestAddSubscriber(t *testing.T) {
 func TestDeleteSubscriber(t *testing.T) {
 	rep := new(mocks.PriceRepository)
 	srv := NewPriceService(rep)
-
 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
 	require.NoError(t, err)
-
 	err = srv.DeleteSubscriber(testSubscriberID)
 	require.NoError(t, err)
-
 	err = srv.AddSubscriber(testSubscriberID, testSelectedShares)
 	require.NoError(t, err)
 	rep.AssertExpectations(t)
@@ -60,20 +55,15 @@ func TestSubscribeAll(t *testing.T) {
 		Return(testShares, nil)
 
 	srv := NewPriceService(rep)
-
 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
 	require.NoError(t, err)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	go func() {
 		srv.SubscribeAll(ctx)
 	}()
-
 	time.Sleep(time.Second)
 	cancel()
-
 	for _, selectedShare := range testSelectedShares {
 		expectedPrice := decimal.Zero
 		for _, share := range testShares {
@@ -94,27 +84,20 @@ func TestSendToSubscriber(t *testing.T) {
 		Return(testShares, nil)
 
 	srv := NewPriceService(rep)
-
 	err := srv.AddSubscriber(testSubscriberID, testSelectedShares)
 	require.NoError(t, err)
-
 	ctxCanceled, cancel := context.WithCancel(context.Background())
 	cancel()
-
 	shares, err := srv.SendToSubscriber(ctxCanceled, testSubscriberID)
 	require.Error(t, err)
 	require.Nil(t, shares)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	go srv.SubscribeAll(ctx)
-
 	shares, err = srv.SendToSubscriber(ctx, testSubscriberID)
 	require.NoError(t, err)
 	require.NotNil(t, shares)
 	require.Len(t, shares, len(testSelectedShares))
-
 	for i, selectedShare := range testSelectedShares {
 		expectedPrice := decimal.Zero
 		for _, share := range testShares {
@@ -125,12 +108,9 @@ func TestSendToSubscriber(t *testing.T) {
 		}
 		require.Equal(t, expectedPrice.InexactFloat64(), shares[i].Price)
 	}
-
 	cancel()
-
 	err = srv.DeleteSubscriber(testSubscriberID)
 	require.NoError(t, err)
-
 	rep.AssertExpectations(t)
 }
 

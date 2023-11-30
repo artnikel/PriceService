@@ -37,33 +37,33 @@ func NewPriceHandler(priceService PriceInterface) *PriceHandler {
 func (h *PriceHandler) Subscribe(req *proto.SubscribeRequest, stream proto.PriceService_SubscribeServer) error {
 	subscriberID, err := uuid.Parse(req.Uuid)
 	if err != nil {
-		logrus.Errorf("PriceHandler-Subscribe: error in method uuid.Parse: %v", err)
+		logrus.Errorf("subscribe %v", err)
 		return err
 	}
 	err = h.priceService.AddSubscriber(subscriberID, req.SelectedShares)
 	if err != nil {
-		logrus.Errorf("PriceHandler-Subscribe-AddSubscriber: error:%v", err)
+		logrus.Errorf("addSubscriber %v", err)
 		return err
 	}
 	for {
 		protoShares, errSend := h.priceService.SendToSubscriber(stream.Context(), subscriberID)
 		if errSend != nil {
-			logrus.Infof("PriceHandler-Subscribe-SendToSubscriber: subscriber disconnected")
+			logrus.Infof("sendToSubscriber: subscriber disconnected")
 			errDelete := h.priceService.DeleteSubscriber(subscriberID)
 			if errDelete != nil {
-				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", errDelete)
+				logrus.Errorf("deleteSubscriber %v", errDelete)
 			}
-			return fmt.Errorf("PriceHandler-Subscribe-SendToSubscriber: error:%w", errSend)
+			return fmt.Errorf("sendToSubscriber %w", errSend)
 		}
 
 		err := stream.Send(&proto.SubscribeResponse{Shares: protoShares})
 		if err != nil {
-			logrus.Infof("PriceHandler-Subscribe-stream.Send: %v", err)
+			logrus.Infof("stream.Send: %v", err)
 			errDelete := h.priceService.DeleteSubscriber(subscriberID)
 			if errDelete != nil {
-				logrus.Errorf("PriceHandler-Subscribe-DeleteSubscriber: error:%v", errDelete)
+				logrus.Errorf("deleteSubscriber %v", errDelete)
 			}
-			return fmt.Errorf("PriceHandler-Subscribe-DeleteSubscriber")
+			return fmt.Errorf("deleteSubscriber")
 		}
 	}
 }

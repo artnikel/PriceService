@@ -40,7 +40,7 @@ func (p *PriceService) AddSubscriber(subscriberID uuid.UUID, selectedShares []st
 		p.manager.SubscribersShare[subscriberID] = make(chan model.Share, len(selectedShares))
 		return nil
 	}
-	return fmt.Errorf("PriceService-AddSubscriber: error: subscriber with such ID already exists")
+	return fmt.Errorf("addSubscriber ")
 }
 
 // DeleteSubscriber deletes a subscriber from the subscribe map in SubscriberManager by uuid
@@ -53,14 +53,14 @@ func (p *PriceService) DeleteSubscriber(subscriberID uuid.UUID) error {
 		delete(p.manager.SubscribersShare, subscriberID)
 		return nil
 	}
-	return fmt.Errorf("PriceService-DeleteSubscriber: error: subscriber with ID %s doesn't exist", subscriberID)
+	return fmt.Errorf("priceService: subscriber with ID %s doesn't exist", subscriberID)
 }
 
 // ReadPrices is a method of GeneratorService that calls method of Repository
 func (p *PriceService) ReadPrices(ctx context.Context) (shares []*model.Share, e error) {
 	shares, err := p.priceRep.ReadPrices(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("PriceService-ReadPrices: error: %w", err)
+		return nil, fmt.Errorf("priceService %w", err)
 	}
 	return shares, nil
 }
@@ -74,7 +74,7 @@ func (p *PriceService) SubscribeAll(ctx context.Context) {
 		}
 		shares, err := p.ReadPrices(ctx)
 		if err != nil {
-			log.Fatalf("PriceService-SubscribeAll: error: %v", err)
+			log.Fatalf("subscribeAll %v", err)
 			return
 		}
 		for _, share := range shares {

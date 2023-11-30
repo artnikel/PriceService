@@ -19,12 +19,11 @@ import (
 func connectRedis() (*redis.Client, error) {
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatal("Could not parse config: ", err)
+		log.Fatal("could not parse config: ", err)
 	}
 	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.RedisPriceAddress,
-		Password: cfg.RedisPricePassword,
-		DB:       0,
+		Addr: cfg.RedisPriceAddress,
+		DB:   0,
 	})
 	_, err = client.Ping(client.Context()).Result()
 	if err != nil {
@@ -37,12 +36,12 @@ func connectRedis() (*redis.Client, error) {
 func main() {
 	redisClient, err := connectRedis()
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Fatalf("failed to connect to Redis: %v", err)
 	}
 	defer func() {
 		errClose := redisClient.Close()
 		if errClose != nil {
-			log.Fatalf("Failed to disconnect from Redis: %v", errClose)
+			log.Fatalf("failed to disconnect from Redis: %v", errClose)
 		}
 	}()
 	repoRedis := repository.NewRedisRepository(redisClient)
@@ -51,12 +50,13 @@ func main() {
 	go servRedis.SubscribeAll(context.Background())
 	lis, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalf("Cannot create listener: %s", err)
+		log.Fatalf("cannot create listener: %s", err)
 	}
+	fmt.Println("Price Service started")
 	grpcServer := grpc.NewServer()
 	proto.RegisterPriceServiceServer(grpcServer, handlRedis)
 	err = grpcServer.Serve(lis)
 	if err != nil {
-		log.Fatalf("Failed to serve listener: %s", err)
+		log.Fatalf("failed to serve listener: %s", err)
 	}
 }

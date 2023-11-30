@@ -84,20 +84,16 @@ func TestSubscribe(t *testing.T) {
 			err: nil,
 		},
 	}
-
 	out, err := client.Subscribe(context.Background(), testReqResp.subReq)
 	require.NoError(t, err)
 	var outs []*proto.SubscribeResponse
-
 	for i := 0; i < 2; i++ {
 		o, err := out.Recv()
 		require.NoError(t, err)
 
 		outs = append(outs, o)
 	}
-
 	require.Equal(t, len(testReqResp.expectedResp.subResponses), len(outs))
-
 	for i, share := range outs[0].Shares {
 		require.Equal(t, share.Company, testReqResp.expectedResp.subResponses[0].Shares[i].Company)
 		require.Equal(t, share.Price, testReqResp.expectedResp.subResponses[0].Shares[i].Price)
@@ -106,6 +102,5 @@ func TestSubscribe(t *testing.T) {
 		require.Equal(t, share.Company, testReqResp.expectedResp.subResponses[0].Shares[i].Company)
 		require.Equal(t, share.Price, testReqResp.expectedResp.subResponses[0].Shares[i].Price)
 	}
-
 	closer()
 }
