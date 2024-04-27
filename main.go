@@ -16,16 +16,12 @@ import (
 	"google.golang.org/grpc"
 )
 
-func connectRedis() (*redis.Client, error) {
-	cfg, err := config.New()
-	if err != nil {
-		log.Fatal("could not parse config: ", err)
-	}
+func connectRedis(cfg *config.Variables) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisPriceAddress,
 		DB:   0,
 	})
-	_, err = client.Ping(client.Context()).Result()
+	_, err := client.Ping(client.Context()).Result()
 	if err != nil {
 		return nil, fmt.Errorf("error in method client.Ping(): %v", err)
 	}
@@ -34,7 +30,11 @@ func connectRedis() (*redis.Client, error) {
 
 // nolint gocritic
 func main() {
-	redisClient, err := connectRedis()
+	cfg, err := config.New()
+	if err != nil {
+		log.Fatal("could not parse config: ", err)
+	}
+	redisClient, err := connectRedis(cfg)
 	if err != nil {
 		log.Fatalf("failed to connect to Redis: %v", err)
 	}
@@ -48,7 +48,7 @@ func main() {
 	servRedis := service.NewPriceService(repoRedis)
 	handlRedis := handler.NewPriceHandler(servRedis)
 	go servRedis.SubscribeAll(context.Background())
-	lis, err := net.Listen("tcp", "localhost:8080")
+	lis, err := net.Listen("tcp", cfg.PriceAddress)
 	if err != nil {
 		log.Fatalf("cannot create listener: %s", err)
 	}

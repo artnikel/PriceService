@@ -6,6 +6,7 @@ import "github.com/caarlos0/env"
 // Variables is a struct with environment variables
 type Variables struct {
 	RedisPriceAddress string `env:"REDIS_PRICE_ADDRESS"`
+	PriceAddress      string `env:"PRICE_ADDRESS"`
 }
 
 // New returns parsed object of config
