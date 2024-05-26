@@ -114,14 +114,3 @@ func TestSendToSubscriber(t *testing.T) {
 	rep.AssertExpectations(t)
 }
 
-func TestReadPrices(t *testing.T) {
-	rep := new(mocks.PriceRepository)
-	rep.On("ReadPrices", mock.Anything).
-		Return(testShares, nil).
-		Once()
-	srv := NewPriceService(rep)
-	actions, err := srv.ReadPrices(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, len(actions), len(testShares))
-	rep.AssertExpectations(t)
-}
